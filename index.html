@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Temurah Workflow Tracker</title>
+<title>Temurah Workflow Tracker — Demo</title>
 <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
   :root { --bg:#f5f2eb; --surface:#fffdf8; --border:#ddd8cc; --text:#1a1814; --text-muted:#6b6660; --shadow:0 1px 3px rgba(0,0,0,0.08); }
@@ -12,6 +12,7 @@
   header { background:var(--surface); border-bottom:1.5px solid var(--border); padding:1rem 2rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; position:sticky; top:0; z-index:100; box-shadow:var(--shadow); }
   .logo { font-family:'Frank Ruhl Libre',serif; font-size:1.4rem; font-weight:700; color:var(--text); }
   .logo span { color:#e74c3c; }
+  .demo-bar { padding:5px 2rem; font-size:11px; font-weight:600; color:#7b1fa2; background:#f5eefa; border-bottom:1px solid #d7b8f0; text-align:center; letter-spacing:0.03em; }
   .header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .header-links { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:0.5rem 2rem; background:#f0ece3; border-bottom:1px solid var(--border); }
   .link-btn { font-size:12px; font-weight:600; padding:5px 12px; border-radius:7px; border:1.5px solid #7a5a30; color:#7a5a30; background:var(--surface); text-decoration:none; transition:background 0.1s,color 0.1s; white-space:nowrap; }
@@ -28,12 +29,6 @@
   .legend-item { display:flex; align-items:center; gap:4px; color:var(--text-muted); }
   .legend-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
   .legend-divider { width:1px; height:18px; background:var(--border); margin:0 8px; }
-  .sync-bar { padding:5px 2rem; font-size:11px; color:var(--text-muted); background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
-  .sync-dot { width:7px; height:7px; border-radius:50%; background:#aaa; flex-shrink:0; transition:background 0.3s; }
-  .sync-dot.live { background:#1db954; }
-  .sync-dot.saving { background:#ffa040; animation:pulse 0.6s infinite alternate; }
-  .sync-dot.error { background:#e74c3c; }
-  @keyframes pulse { from{opacity:1} to{opacity:0.3} }
   main { padding:1.5rem 2rem; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
   .card { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
@@ -64,7 +59,7 @@
   .remove-graphic-btn { font-size:11px; font-weight:700; color:#e74c3c; background:none; border:1px solid #e74c3c; border-radius:5px; padding:1px 5px; cursor:pointer; flex-shrink:0; line-height:1.4; transition:background 0.1s,color 0.1s; }
   .remove-graphic-btn:hover { background:#e74c3c; color:#fff; }
   .no-results,.loading-overlay { grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-muted); font-size:15px; }
-  @media(max-width:600px) { header,main{padding-left:1rem;padding-right:1rem} .legend,.sync-bar,.header-links{padding-left:1rem;padding-right:1rem} .grid{grid-template-columns:1fr;gap:10px} }
+  @media(max-width:600px) { header,main{padding-left:1rem;padding-right:1rem} .legend,.header-links{padding-left:1rem;padding-right:1rem} .grid{grid-template-columns:1fr;gap:10px} }
 </style>
 </head>
 <body>
@@ -88,6 +83,7 @@
     </select>
   </div>
 </header>
+<div class="demo-bar">&#9888; DEMO MODE &mdash; clicks are not saved to the shared database</div>
 <div class="header-links">
   <a class="link-btn" href="https://alehzayis.sharepoint.com/:f:/s/info/IgAb6yJwcWHGQJP0Dn_Ay_iKAVpZ0YlgM9ZiNt59J7c-oqg?e=mdqx1Q" target="_blank">AZ-26455 Temurah Sharepoint</a>
   <a class="link-btn" href="https://alehzayis.sharepoint.com/:x:/s/info/IQBwpN5_0gnWQrGFU0J2gkf4Aec94AloV6wiF6dvPaZ0gAs?e=jldNmu" target="_blank">Graphics Spreadsheet</a>
@@ -95,28 +91,10 @@
   <a class="link-btn small" href="https://alehzayis.sharepoint.com/:f:/s/info/IgC1pPMATOj6SLKVTmlgJuFKAeDJhM58Huw6yWK9QJ_RDyw?e=FAxlCM" target="_blank">Editors</a>
 </div>
 <div class="legend" id="legend"></div>
-<div class="sync-bar">
-  <div class="sync-dot" id="syncDot"></div>
-  <span id="syncMsg">Connecting&hellip;</span>
-</div>
 <main>
-  <div class="grid" id="grid"><div class="loading-overlay">Connecting to database&hellip;</div></div>
+  <div class="grid" id="grid"></div>
 </main>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-const firebaseConfig = {
-  apiKey: "AIzaSyDBroJum2yyXz1HyyeWCxRHUwlvt4VGMy8",
-  authDomain: "chullin-workflow.firebaseapp.com",
-  databaseURL: "https://chullin-workflow-default-rtdb.firebaseio.com",
-  projectId: "chullin-workflow",
-  storageBucket: "chullin-workflow.firebasestorage.app",
-  messagingSenderId: "1006486263720",
-  appId: "1:1006486263720:web:12a12c96e7fd3d9cdcef9d"
-};
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const amudimRef = ref(db, 'temurah');
+<script>
 const MAIN_STAGES = [
   {name:"Open",        color:"#e74c3c"},
   {name:"Written",     color:"#ffa040"},
@@ -158,25 +136,10 @@ function getS(amud) {
   if (!state[amud].graphics||!state[amud].graphics.length) state[amud].graphics=[0];
   return state[amud];
 }
-function syncStatus(status,msg) {
-  document.getElementById('syncDot').className='sync-dot '+status;
-  document.getElementById('syncMsg').textContent=msg;
-}
-function saveAmud(amud) {
-  syncStatus('saving','Saving\u2026');
-  set(ref(db,'temurah/'+amud),state[amud])
-    .then(()=>syncStatus('live','Live \u2014 all changes saved'))
-    .catch(()=>syncStatus('error','Save failed \u2014 check connection'));
-}
-function advanceMain(amud) { getS(amud).stage=(getS(amud).stage+1)%MAIN_STAGES.length; renderGrid(); saveAmud(amud); }
-function advanceGraphic(amud,gi) { getS(amud).graphics[gi]=(getS(amud).graphics[gi]+1)%GRAPHIC_STAGES.length; renderGrid(); saveAmud(amud); }
-function addGraphic(amud) { getS(amud).graphics.push(0); renderGrid(); saveAmud(amud); }
-function removeGraphic(amud,gi) {
-  if (gi===0) return;
-  getS(amud).graphics.splice(gi,1);
-  renderGrid();
-  saveAmud(amud);
-}
+function advanceMain(amud) { getS(amud).stage=(getS(amud).stage+1)%MAIN_STAGES.length; renderGrid(); }
+function advanceGraphic(amud,gi) { getS(amud).graphics[gi]=(getS(amud).graphics[gi]+1)%GRAPHIC_STAGES.length; renderGrid(); }
+function addGraphic(amud) { getS(amud).graphics.push(0); renderGrid(); }
+function removeGraphic(amud,gi) { if(gi===0)return; getS(amud).graphics.splice(gi,1); renderGrid(); }
 function buildLegend() {
   const mi=MAIN_STAGES.map(s=>'<div class="legend-item"><div class="legend-dot" style="background:'+s.color+'"></div>'+s.name+'</div>').join('');
   const gi=GRAPHIC_STAGES.map(s=>'<div class="legend-item"><div class="legend-dot" style="background:'+s.color+'"></div>'+s.name+'</div>').join('');
@@ -217,16 +180,8 @@ function renderGrid() {
   grid.querySelectorAll('.remove-graphic-btn').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();removeGraphic(el.dataset.amud,parseInt(el.dataset.gi));}));
   renderStats();
 }
-onValue(amudimRef,(snapshot)=>{
-  const data=snapshot.val()||{};
-  AMUDIM.forEach(a=>{
-    if(data[a]!==undefined){state[a]={stage:Number(data[a].stage||0),graphics:Array.isArray(data[a].graphics)?data[a].graphics.map(Number):[0]};}
-    else{state[a]={stage:0,graphics:[0]};}
-  });
-  syncStatus('live','Live \u2014 all changes saved');
-  renderGrid();
-});
 buildLegend();
+renderGrid();
 document.getElementById('search').addEventListener('input',renderGrid);
 document.getElementById('filterStatus').addEventListener('change',renderGrid);
 </script>
